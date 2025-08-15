@@ -1,0 +1,45 @@
+/* TransactionDetails Table Styles */
+
+.transaction-details-container {
+  position: relative;
+  min-width: 700px;
+}
+
+.transaction-table {
+  width: 100%;
+}
+
+/* Compact row styles */
+.transaction-table .MuiTableCell-root {
+  padding: 13px 16px;
+}
+
+.transaction-table .MuiTableHead-root .MuiTableCell-root {
+  padding: 8px 16px;
+}
+
+/* Highlight for new transactions */
+.new-transaction-row {
+  background-color: rgba(0, 191, 255, 0.1);
+  transition: background-color 3s ease-out;
+}
+
+/* Table section spacing */
+.table-container {
+  margin-bottom: 10px;
+}
+
+/* Search section spacing */
+.search-section {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* Header section spacing */
+.header-section {
+  padding: 0 0 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}

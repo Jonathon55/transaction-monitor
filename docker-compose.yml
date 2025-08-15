@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - MEMGRAPH_URL=bolt://memgraph:7687
+      - DATABASE_PATH=/data/sayari.db
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./database:/data     
+    command: npm run dev
+    depends_on:
+      - memgraph
+    networks:
+      - app-network
+  
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  
+    command: npm run dev
+    depends_on:
+      - memgraph
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    networks:
+      - app-network
+
+  simulator:
+    build:
+       context: ./transaction_simulator/
+    environment:
+      - API_URL=http://backend:3000/api/transactions
+      - DATABASE_PATH=/data/sayari.db
+    volumes:
+      - ./database:/data                     
+      - ./transaction_simulator:/simulator
+      - /simulator/node_modules
+    command: npm run dev
+    depends_on:
+      - backend
+      - memgraph
+    networks:
+      - app-network
+  
+  memgraph:
+    image: memgraph/memgraph
+    ports:
+      - "7687:7687"
+      - "3002:3000"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

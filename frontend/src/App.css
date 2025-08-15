@@ -1,0 +1,69 @@
+@font-face {
+  font-family: 'Graphik Medium';
+  src: url('https://sayari.com/wp-content/themes/sayari/assets/fonts/Graphik-Medium-Web.woff2') format('woff2');
+  font-style: normal;
+}
+
+.logo {
+  font-family: 'Graphik Medium', sans-serif;
+  font-size: 24px;
+  letter-spacing: 5px;
+  padding-left: 15px;
+  padding-top: 7px;
+}
+
+
+.container {
+  width: 100%;
+  flex: 1;
+  overflow: auto;
+}
+
+.graph {
+  background-color: #101417;
+  background-image: radial-gradient(circle, #000 10%, transparent 1%);
+  background-size: 20px 20px;
+  border-width: 0 2px 0 0;
+  border-style: solid;
+  border-color: #000;
+  position: relative;
+  padding: 10px 0;
+}
+
+/* Animation for new edges and notifications */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes pulse {
+  0% { filter: drop-shadow(0 0 2px rgba(0, 191, 255, 0.5)); }
+  50% { filter: drop-shadow(0 0 8px rgba(0, 191, 255, 0.8)); }
+  100% { filter: drop-shadow(0 0 2px rgba(0, 191, 255, 0.5)); }
+}
+
+/* Add transition for smooth animations */
+.trellis-edge {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Remove outline from refresh button */
+.no-outline {
+  outline: none !important;
+}
+.no-outline:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.no-outline:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
