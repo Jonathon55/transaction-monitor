@@ -6,7 +6,7 @@
 - Docker and Docker Compose
 - npm
 
-### Running with Docker Compose (Recommended)
+### Running with Docker Compose
 
 ```bash
 # Rebuild and start all services
