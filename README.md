@@ -9,6 +9,9 @@ The scope is designed to take around 5 hours to complete; please plan the tasks 
 
 ## Overview
 
+<img width="1835" height="1090" alt="Screenshot 2025-08-18 at 10 19 10 AM" src="https://github.com/user-attachments/assets/9d59b97b-c8a5-441f-8c70-f85aa7b0f6ab" />
+
+
 This is an example real-time business transaction monitoring application that visualizes financial transactions between businesses. The application displays transaction data in both tabular and graph formats, providing insights into business relationships and transaction patterns.
 
 Note that the codebase is not perfect; feel free to refactor areas outside of the scope of your tasks if it helps you to achieve your goal.
@@ -32,8 +35,8 @@ The application consists of:
 - **Backend**: Node.js/Express API server
 - **Databases**: 
   - SQLite for business metadata (name, industry)
-  - Memgraph (Neo4j-compatible) for transaction graph data
-- **Transaction Simulator**: Optional service that generates sample transactions
+  - Memgraph for transaction graph data
+- **Transaction Simulator**: generates sample transactions
 
 ### Features
 
