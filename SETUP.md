@@ -6,20 +6,7 @@
 - Docker and Docker Compose
 - npm
 
-### Running with Docker Compose
-
-```bash
-# Rebuild and start all services
-docker compose down
-docker compose up -d --build
-```
-
-Services will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3001
-- Memgraph: bolt://localhost:7687
-
-### Running Services Locally (Alternative)
+### Running Services Locally
 
 #### 1. Start Memgraph in Docker
 
@@ -52,6 +39,19 @@ cd transaction_simulator
 npm install
 npm run dev
 ```
+
+### Running with Docker Compose
+
+```bash
+# Rebuild and start all services
+docker compose down
+docker compose up -d --build
+```
+
+Services will be available at:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:3001
+- Memgraph: bolt://localhost:7687
 
 ## Development Notes
 
