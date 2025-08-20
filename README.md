@@ -20,7 +20,7 @@ Note that the codebase is not perfect; feel free to refactor areas outside of th
 
 1. Clone the repo: Please do not fork the repo; instead clone into your own github repo.
 
-2. User Stories: Complete the user stories in the [issues](https://github.com/sayari-puzzles/app-eng-mid-takehome/issues) tab of this GitHub repository.
+2. User Stories: There are 3 Issues to choose from, **you only need to complete 2 of them**, however your submission should contain one frontend and one backend story. You can find these user stories in the [issues](https://github.com/sayari-puzzles/app-eng-mid-takehome/issues) tab of this GitHub repository.
 
 3. Commit your solutions to your repo, and share the link with your recruiter.
 
