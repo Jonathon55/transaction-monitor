@@ -4,7 +4,7 @@
 
 This assessment allows you to demonstrate your ability to build or modify features in an existing codebase. You'll be working with a React/TypeScript frontend and a Node/Express/SQLite backend that records transactions between businesses. 
 
-The scope is designed to take around 5 hours to complete; please plan the tasks with this in mind.
+The scope is designed to take around 4-5 hours to complete; please plan the tasks with this in mind.
 
 
 ## Overview
