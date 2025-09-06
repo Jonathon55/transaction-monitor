@@ -50,7 +50,7 @@ export const insertAlert = async (alert: Alert): Promise<number> => {
   });
 };
 
-// Optional helper (not used yet) to get recent alerts
+// helper to get recent alerts
 export const findRecentAlerts = async (limit = 50): Promise<Alert[]> => {
   await ensureTable();
   const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE);
