@@ -1,6 +1,6 @@
 # Real-Time Transaction Monitoring with Risk Scoring and Community Detection
 
-## Overview
+## Overview (Build your own feature)
 
 - This extension enhances the real-time business transaction monitoring application by integrating graph-native risk scoring, alert generation, and community detection. The system processes incoming transactions to compute risk scores for businesses, identify anomalous events (alerts), and group businesses into communities based on transaction patterns. These insights are visualized in the interactive graph and updated live via WebSockets, enabling users to monitor financial flows, detect potential risks, and analyze network structures efficiently.
   The implementation focuses on backend logic for computation and data enrichment, with minimal frontend modifications to display the new features. All changes leverage the existing architecture, ensuring seamless integration without disrupting core functionality.

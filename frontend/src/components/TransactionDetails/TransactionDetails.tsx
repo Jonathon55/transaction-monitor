@@ -20,6 +20,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { getSocket } from '../../services/socket';
 import './TransactionDetails.css';
+import { useBusinessDirectory } from '../../hooks/useBusinessDirectory';
 
 type Transaction = {
   from: string;
@@ -63,12 +64,23 @@ const TransactionDetailsTable = () => {
     };
   }, []);
 
+  // directory for ID -> Name lookups (HTTP once + keeps fresh via sockets) */
+  const { lookup } = useBusinessDirectory();
+
   // Initial data fetch
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl =
+          (() => {
+            try {
+              const m: any = (0, eval)('import.meta');
+              return m?.env?.VITE_API_URL;
+            } catch {
+              return process.env.VITE_API_URL;
+            }
+          })() || 'http://localhost:3001';
         const response = await fetch(`${apiUrl}/api/businesses/transactions`);
         if (!response.ok)
           throw new Error(`HTTP error! Status: ${response.status}`);
@@ -104,10 +116,17 @@ const TransactionDetailsTable = () => {
 
       // Include in filtered list if it matches the current query
       const q = searchQueryRef.current.toLowerCase();
+
+      /* NEW: allow search by either ID or *name* */
+      const fromDisplay = lookup(transaction.from).toLowerCase();
+      const toDisplay = lookup(transaction.to).toLowerCase();
+
       const matches =
         !q ||
         transaction.from.toLowerCase().includes(q) ||
         transaction.to.toLowerCase().includes(q) ||
+        fromDisplay.includes(q) || // NEW: name match (from)
+        toDisplay.includes(q) || // NEW: name match (to)
         transaction.timestamp.toLowerCase().includes(q) ||
         transaction.amount.toString().includes(q);
 
@@ -133,7 +152,7 @@ const TransactionDetailsTable = () => {
       socket.off('initialData', handleInitialData);
       socket.off('graphUpdate', handleGraphUpdate);
     };
-  }, []);
+  }, [lookup]);
 
   // Search
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,13 +164,20 @@ const TransactionDetailsTable = () => {
       return;
     }
 
-    const filtered = transactionsData.filter(
-      (tx) =>
+    const filtered = transactionsData.filter((tx) => {
+      const fromName = lookup(tx.from).toLowerCase();
+      const toName = lookup(tx.to).toLowerCase();
+
+      return (
         tx.from.toLowerCase().includes(query) ||
         tx.to.toLowerCase().includes(query) ||
+        fromName.includes(query) || // NEW: name match (from)
+        toName.includes(query) || // NEW: name match (to)
         tx.timestamp.toLowerCase().includes(query) ||
         tx.amount.toString().includes(query)
-    );
+      );
+    });
+
     setFilteredData(filtered);
   };
 
@@ -308,8 +334,8 @@ const TransactionDetailsTable = () => {
                     className={isNewTransaction ? 'new-transaction-row' : ''}
                   >
                     <TableCell>{formatTimestamp(row.timestamp)}</TableCell>
-                    <TableCell>{row.from}</TableCell>
-                    <TableCell>{row.to}</TableCell>
+                    <TableCell>{lookup(row.from)}</TableCell>
+                    <TableCell>{lookup(row.to)}</TableCell>
                     <TableCell align="right">
                       {formatAmount(row.amount)}
                     </TableCell>
