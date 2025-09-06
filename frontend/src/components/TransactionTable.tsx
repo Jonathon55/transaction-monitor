@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -8,8 +8,8 @@ import {
   TableRow,
   Paper,
   TableSortLabel,
-} from "@mui/material";
-import { getSocket } from "../services/socket";
+} from '@mui/material';
+import { getSocket } from '../services/socket';
 
 type Business = {
   business_id: string;
@@ -30,10 +30,11 @@ const TransactionTable = () => {
   const [loading, setLoading] = useState(false);
   const [newBusiness, setNewBusiness] = useState<Business | null>(null);
 
-
   // Sorting State - default to transaction count descending
-  const [sortBy, setSortBy] = useState<"name" | "industry" | "totalTransactions">("totalTransactions");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<
+    'name' | 'industry' | 'totalTransactions'
+  >('totalTransactions');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Function to fetch business data and transaction counts
   const fetchBusinessData = async (isInitialLoad = false) => {
@@ -50,29 +51,37 @@ const TransactionTable = () => {
       }
       const result = await response.json();
       const businesses = result.data || [];
-      
+
       // Fetch transaction counts for each business
-      const countsMap: {[key: string]: number} = {};
+      const countsMap: { [key: string]: number } = {};
       for (const business of businesses) {
         try {
           const countResponse = await fetch(
-            `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/businesses/${business.business_id}/transaction-count`
+            `${
+              import.meta.env.VITE_API_URL || 'http://localhost:3000'
+            }/api/businesses/${business.business_id}/transaction-count`
           );
           if (countResponse.ok) {
             const countData = await countResponse.json();
-            countsMap[business.business_id] = countData.transactionCount || 0;
+            countsMap[business.business_id] =
+              countData?.data?.transactionCount ??
+              countData?.transactionCount ??
+              0;
           }
         } catch (err) {
-          console.error(`Failed to fetch transaction count for ${business.name}:`, err);
+          console.error(
+            `Failed to fetch transaction count for ${business.name}:`,
+            err
+          );
         }
       }
-      
+
       // Combine business data with transaction counts
       const enrichedBusinesses = businesses.map((business: Business) => ({
         ...business,
-        totalTransactions: countsMap[business.business_id] || 0
+        totalTransactions: countsMap[business.business_id] || 0,
       }));
-      
+
       setBusinessData(enrichedBusinesses);
       return true;
     } catch (err: unknown) {
@@ -101,56 +110,63 @@ const TransactionTable = () => {
     };
 
     // Define event handlers
-    const handleGraphUpdate = async (data: { 
-      nodes?: GraphNode[], 
-      newTransaction?: { 
-        from: string | { id: string }, 
-        to: string | { id: string },
-        amount: number,
-        timestamp: string
-      } 
+    const handleGraphUpdate = async (data: {
+      nodes?: GraphNode[];
+      newTransaction?: {
+        from: string | { id: string };
+        to: string | { id: string };
+        amount: number;
+        timestamp: string;
+      };
     }) => {
       if (data && data.newTransaction) {
         const transaction = data.newTransaction;
-        
+
         // Extract business IDs
         const fromId = getBusinessId(transaction.from);
         const toId = getBusinessId(transaction.to);
 
         if (!fromId) {
-          console.error("Could not determine source business ID from transaction", transaction);
+          console.error(
+            'Could not determine source business ID from transaction',
+            transaction
+          );
           return;
         }
 
-        console.log(`New transaction from ${fromId} to ${toId || 'unknown'} for ${transaction.amount}`);
-        
+        console.log(
+          `New transaction from ${fromId} to ${toId || 'unknown'} for ${
+            transaction.amount
+          }`
+        );
+
         // Node data is available but not currently used
         // Could be used in future for additional enrichment
-        
+
         // Update business data with new counts
-        setBusinessData(prevBusinessData => {
-          const updatedBusinessData = prevBusinessData.map(business => {
+        setBusinessData((prevBusinessData) => {
+          const updatedBusinessData = prevBusinessData.map((business) => {
             // Increment count for the "from" business
             if (business.business_id === fromId) {
               // Mark this business as updated for highlighting
               setNewBusiness(business);
               setTimeout(() => setNewBusiness(null), 3000);
-              
+
               return {
                 ...business,
-                totalTransactions: (business.totalTransactions || 0) + 1
+                totalTransactions: (business.totalTransactions || 0) + 1,
               };
             }
             // Also increment count for the "to" business
             if (toId && business.business_id === toId) {
               return {
                 ...business,
-                totalTransactions: (business.totalTransactions || 0) + 1
+                totalTransactions: (business.totalTransactions || 0) + 1,
               };
             }
             return business;
           });
-          
+
           return updatedBusinessData;
         });
       }
@@ -158,7 +174,7 @@ const TransactionTable = () => {
 
     const handleInitialData = (data: { nodes?: GraphNode[] }) => {
       if (data && data.nodes && Array.isArray(data.nodes)) {
-        console.log("Received initialData with", data.nodes.length, "nodes");
+        console.log('Received initialData with', data.nodes.length, 'nodes');
       }
     };
 
@@ -173,12 +189,10 @@ const TransactionTable = () => {
     };
   }, []);
 
-
-
   // Handle sorting
-  const handleSort = (property: "name" | "industry" | "totalTransactions") => {
-    const isAsc = sortBy === property && sortDirection === "asc";
-    setSortDirection(isAsc ? "desc" : "asc");
+  const handleSort = (property: 'name' | 'industry' | 'totalTransactions') => {
+    const isAsc = sortBy === property && sortDirection === 'asc';
+    setSortDirection(isAsc ? 'desc' : 'asc');
     setSortBy(property);
   };
 
@@ -187,12 +201,12 @@ const TransactionTable = () => {
     const valueA = a[sortBy];
     const valueB = b[sortBy];
 
-    if (typeof valueA === "number" && typeof valueB === "number") {
-      return sortDirection === "asc" ? valueA - valueB : valueB - valueA;
+    if (typeof valueA === 'number' && typeof valueB === 'number') {
+      return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
     }
 
-    if (typeof valueA === "string" && typeof valueB === "string") {
-      return sortDirection === "asc"
+    if (typeof valueA === 'string' && typeof valueB === 'string') {
+      return sortDirection === 'asc'
         ? valueA.localeCompare(valueB)
         : valueB.localeCompare(valueA);
     }
@@ -200,12 +214,11 @@ const TransactionTable = () => {
     return 0;
   });
 
-
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: 'relative' }}>
       {/* Table Section */}
       <TableContainer component={Paper}>
         <Table aria-label="Transaction Summary Table">
@@ -213,27 +226,27 @@ const TransactionTable = () => {
             <TableRow>
               <TableCell>
                 <TableSortLabel
-                  active={sortBy === "name"}
+                  active={sortBy === 'name'}
                   direction={sortDirection}
-                  onClick={() => handleSort("name")}
+                  onClick={() => handleSort('name')}
                 >
                   <b>Business</b>
                 </TableSortLabel>
               </TableCell>
               <TableCell>
                 <TableSortLabel
-                  active={sortBy === "industry"}
+                  active={sortBy === 'industry'}
                   direction={sortDirection}
-                  onClick={() => handleSort("industry")}
+                  onClick={() => handleSort('industry')}
                 >
                   <b>Industry</b>
                 </TableSortLabel>
               </TableCell>
               <TableCell align="right">
                 <TableSortLabel
-                  active={sortBy === "totalTransactions"}
+                  active={sortBy === 'totalTransactions'}
                   direction={sortDirection}
-                  onClick={() => handleSort("totalTransactions")}
+                  onClick={() => handleSort('totalTransactions')}
                   sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                 >
                   <b>Total Transactions</b>
@@ -244,16 +257,21 @@ const TransactionTable = () => {
           <TableBody>
             {sortedData.map((row, index) => {
               // Check if this is the updated business that was just involved in a transaction
-              const isUpdatedBusiness = newBusiness && newBusiness.business_id === row.business_id;
-                
+              const isUpdatedBusiness =
+                newBusiness && newBusiness.business_id === row.business_id;
+
               return (
-                <TableRow 
+                <TableRow
                   key={row.business_id || index}
                   className={isUpdatedBusiness ? 'new-transaction-row' : ''}
-                  sx={isUpdatedBusiness ? { 
-                    backgroundColor: 'rgba(0, 191, 255, 0.1)',
-                    transition: 'background-color 3s ease-out'
-                  } : {}}
+                  sx={
+                    isUpdatedBusiness
+                      ? {
+                          backgroundColor: 'rgba(0, 191, 255, 0.1)',
+                          transition: 'background-color 3s ease-out',
+                        }
+                      : {}
+                  }
                 >
                   <TableCell>{row.name}</TableCell>
                   <TableCell>{row.industry}</TableCell>
@@ -264,7 +282,6 @@ const TransactionTable = () => {
           </TableBody>
         </Table>
       </TableContainer>
-
     </div>
   );
 };

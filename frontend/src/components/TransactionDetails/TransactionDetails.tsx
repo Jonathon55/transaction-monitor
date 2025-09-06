@@ -1,21 +1,25 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from 'react';
 import {
+  Box,
+  IconButton,
+  InputAdornment,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  TextField,
-  Typography,
-  Box,
   TableSortLabel,
-  InputAdornment,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import { getSocket } from "../../services/socket";
-import "./TransactionDetails.css";
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { getSocket } from '../../services/socket';
+import './TransactionDetails.css';
 
 type Transaction = {
   from: string;
@@ -24,18 +28,40 @@ type Transaction = {
   timestamp: string;
 };
 
+type SortKey = keyof Transaction;
+
+const MAX_ROWS = 250; // keep memory/UI stable
+
 const TransactionDetailsTable = () => {
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+
   const [transactionsData, setData] = useState<Transaction[]>([]);
   const [filteredData, setFilteredData] = useState<Transaction[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [newTransaction, setNewTransaction] = useState<Transaction | null>(null);
+  const [newTransaction, setNewTransaction] = useState<Transaction | null>(
+    null
+  );
 
+  const [sortBy, setSortBy] = useState<SortKey>('timestamp');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // Sorting State - default to timestamp descending (newest first)
-  const [sortBy, setSortBy] = useState<keyof Transaction>("timestamp");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  // Keep the latest search query accessible inside socket handlers without re-subscribing
+  const searchQueryRef = useRef<string>(searchQuery);
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+
+  // Clear highlight timeout on unmount to avoid sticking
+  const highlightTimeoutRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Initial data fetch
   useEffect(() => {
@@ -43,13 +69,13 @@ const TransactionDetailsTable = () => {
       setLoading(true);
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        const response = await fetch(`${apiUrl}/api/businesses/transactions/`);
-        if (!response.ok) {
+        const response = await fetch(`${apiUrl}/api/businesses/transactions`);
+        if (!response.ok)
           throw new Error(`HTTP error! Status: ${response.status}`);
-        }
         const result = await response.json();
-        setData(result.data);
-        setFilteredData(result.data); // Initialize filtered data
+        const initial: Transaction[] = result?.data ?? [];
+        setData(initial.slice(0, MAX_ROWS));
+        setFilteredData(initial.slice(0, MAX_ROWS));
       } catch (err: unknown) {
         setError((err as Error).message);
       } finally {
@@ -58,233 +84,242 @@ const TransactionDetailsTable = () => {
     })();
   }, []);
 
-  // WebSocket connection for live updates
+  // WebSocket: subscribe once; clear on initialData; append on graphUpdate
   useEffect(() => {
-    // Get the shared socket instance
     const socket = getSocket();
 
-    // Define event handler
-    const handleGraphUpdate = async (data: any) => {
-      if (data && data.newTransaction) {
-        const transaction = data.newTransaction;
-        
-        // Add the new transaction to our data
-        setData(prevData => {
-          // Create a new array with the new transaction at the beginning
-          const newData = [transaction, ...prevData];
-          return newData;
-        });
-        
-        // Also update filtered data if it should be included in the current filter
-        setFilteredData(prevFiltered => {
-          const query = searchQuery.toLowerCase();
-          const shouldInclude = !query || 
-            transaction.from.toLowerCase().includes(query) ||
-            transaction.to.toLowerCase().includes(query) ||
-            transaction.timestamp.toLowerCase().includes(query) ||
-            transaction.amount.toString().includes(query);
-            
-          if (shouldInclude) {
-            return [transaction, ...prevFiltered];
-          }
-          return prevFiltered;
-        });
-        
-        // Set new transaction for highlighting
-        setNewTransaction(transaction);
-        
-        // Clear the highlight effect after 3 seconds
-        setTimeout(() => {
-          setNewTransaction(null);
-        }, 3000);
-      }
+    const handleInitialData = () => {
+      // Server restarted or snapshot resent: reset the panel for a clean demo state
+      setData([]);
+      setFilteredData([]);
+      setNewTransaction(null);
     };
 
-    // Register event listener
+    const handleGraphUpdate = (payload: any) => {
+      const transaction: Transaction | undefined = payload?.newTransaction;
+      if (!transaction) return;
+
+      // Add to master list (limit growth)
+      setData((prev) => [transaction, ...prev].slice(0, MAX_ROWS));
+
+      // Include in filtered list if it matches the current query
+      const q = searchQueryRef.current.toLowerCase();
+      const matches =
+        !q ||
+        transaction.from.toLowerCase().includes(q) ||
+        transaction.to.toLowerCase().includes(q) ||
+        transaction.timestamp.toLowerCase().includes(q) ||
+        transaction.amount.toString().includes(q);
+
+      if (matches) {
+        setFilteredData((prev) => [transaction, ...prev].slice(0, MAX_ROWS));
+      }
+
+      // Flash highlight row
+      setNewTransaction(transaction);
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        setNewTransaction(null);
+        highlightTimeoutRef.current = null;
+      }, 3000);
+    };
+
+    socket.on('initialData', handleInitialData);
     socket.on('graphUpdate', handleGraphUpdate);
 
-    // Cleanup: remove event listener on unmount
     return () => {
+      socket.off('initialData', handleInitialData);
       socket.off('graphUpdate', handleGraphUpdate);
     };
-  }, [searchQuery, transactionsData]);
+  }, []);
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
-
-
-  // Handle Search Input Change
+  // Search
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value.toLowerCase();
+    const query = (event.target.value ?? '').toLowerCase();
     setSearchQuery(query);
 
-    // Filter the transactions based on the search query
-    const filtered = transactionsData.filter((transaction) =>
-      transaction.from.toLowerCase().includes(query) ||
-      transaction.to.toLowerCase().includes(query) ||
-      transaction.timestamp.toLowerCase().includes(query) ||
-      transaction.amount.toString().includes(query)
+    if (!query) {
+      setFilteredData(transactionsData);
+      return;
+    }
+
+    const filtered = transactionsData.filter(
+      (tx) =>
+        tx.from.toLowerCase().includes(query) ||
+        tx.to.toLowerCase().includes(query) ||
+        tx.timestamp.toLowerCase().includes(query) ||
+        tx.amount.toString().includes(query)
     );
     setFilteredData(filtered);
   };
 
-  // Format Timestamp
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
-
-  // Format Amount as Dollar
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
-
-  // Handle Sorting
-  const handleSort = (property: keyof Transaction) => {
-    const isAsc = sortBy === property && sortDirection === "asc";
-    setSortDirection(isAsc ? "desc" : "asc");
+  // Sorting
+  const handleSort = (property: SortKey) => {
+    const isAsc = sortBy === property && sortDirection === 'asc';
+    setSortDirection(isAsc ? 'desc' : 'asc');
     setSortBy(property);
   };
 
-  // Apply Sorting
   const sortedData = [...filteredData].sort((a, b) => {
     const valueA = a[sortBy];
     const valueB = b[sortBy];
 
-    // Special handling for timestamp (date) sorting
-    if (sortBy === "timestamp") {
+    if (sortBy === 'timestamp') {
       const dateA = new Date(valueA as string).getTime();
       const dateB = new Date(valueB as string).getTime();
-      return sortDirection === "asc" ? dateA - dateB : dateB - dateA;
+      return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
     }
-
-    if (typeof valueA === "number" && typeof valueB === "number") {
-      return sortDirection === "asc" ? valueA - valueB : valueB - valueA;
+    if (typeof valueA === 'number' && typeof valueB === 'number') {
+      return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
     }
-
-    if (typeof valueA === "string" && typeof valueB === "string") {
-      return sortDirection === "asc"
+    if (typeof valueA === 'string' && typeof valueB === 'string') {
+      return sortDirection === 'asc'
         ? valueA.localeCompare(valueB)
         : valueB.localeCompare(valueA);
     }
-
     return 0;
   });
 
+  const formatTimestamp = (timestamp: string) =>
+    new Date(timestamp).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+
+  const formatAmount = (amount: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
-    <div className="transaction-details-container">
-
-      {/* Header Section */}
-      <Box className="header-section">
-        <Typography sx={{ fontWeight: "bold" }}>
-          Transactions
-        </Typography>
+    <div className={`td-panel ${isCollapsed ? 'collapsed' : ''}`}>
+      {/* Header */}
+      <Box className="td-header">
+        <Typography className="td-title">Transactions</Typography>
+        <Tooltip title={isCollapsed ? 'Expand' : 'Collapse'} placement="right">
+          <IconButton
+            size="small"
+            color="inherit"
+            onClick={() => setIsCollapsed((v) => !v)}
+            className="td-collapse-btn"
+            aria-label={
+              isCollapsed
+                ? 'expand transactions panel'
+                : 'collapse transactions panel'
+            }
+          >
+            {isCollapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+          </IconButton>
+        </Tooltip>
       </Box>
 
-      {/* Search Section */}
-      <div className="search-section">
-        <TextField
-          variant="outlined"
-          size="small"
-          placeholder="Search by From, To or Amount..."
-          value={searchQuery}
-          onChange={handleSearchChange}
-          fullWidth
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
+      {/* Body (hidden when collapsed) */}
+      <div className="td-body">
+        {/* Search */}
+        <div className="search-section">
+          <TextField
+            variant="outlined"
+            size="small"
+            placeholder="Search by From, To or Amount..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </div>
+
+        {/* Table (scrolls internally; panel width stays stable) */}
+        <TableContainer component={Paper} className="table-container">
+          <Table
+            aria-label="Detailed Transactions Table"
+            size="small"
+            className="transaction-table"
+          >
+            <TableHead>
+              <TableRow>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy === 'timestamp'}
+                    direction={sortDirection}
+                    onClick={() => handleSort('timestamp')}
+                    sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
+                  >
+                    Time
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy === 'from'}
+                    direction={sortDirection}
+                    onClick={() => handleSort('from')}
+                  >
+                    From
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy === 'to'}
+                    direction={sortDirection}
+                    onClick={() => handleSort('to')}
+                  >
+                    To
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right">
+                  <TableSortLabel
+                    active={sortBy === 'amount'}
+                    direction={sortDirection}
+                    onClick={() => handleSort('amount')}
+                  >
+                    Amount
+                  </TableSortLabel>
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {sortedData.map((row, index) => {
+                // Check if this is the new transaction that just came in
+                const isNewTransaction =
+                  newTransaction &&
+                  row.from === newTransaction.from &&
+                  row.to === newTransaction.to &&
+                  row.amount === newTransaction.amount &&
+                  row.timestamp === newTransaction.timestamp;
+
+                return (
+                  <TableRow
+                    key={`${row.timestamp}-${row.from}-${row.to}-${index}`}
+                    className={isNewTransaction ? 'new-transaction-row' : ''}
+                  >
+                    <TableCell>{formatTimestamp(row.timestamp)}</TableCell>
+                    <TableCell>{row.from}</TableCell>
+                    <TableCell>{row.to}</TableCell>
+                    <TableCell align="right">
+                      {formatAmount(row.amount)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </div>
-
-      {/* Table Section */}
-      <TableContainer component={Paper} className="table-container">
-        <Table 
-          aria-label="Detailed Transactions Table"
-          size="small"
-          className="transaction-table"
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <TableSortLabel
-                  active={sortBy === "timestamp"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("timestamp")}
-                  // Set to active by default to show sort direction
-                  sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
-                >
-                  Time
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortBy === "from"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("from")}
-                >
-                  From
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={sortBy === "to"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("to")}
-                >
-                  To
-                </TableSortLabel>
-              </TableCell>
-              <TableCell align="right">
-                <TableSortLabel
-                  active={sortBy === "amount"}
-                  direction={sortDirection}
-                  onClick={() => handleSort("amount")}
-                >
-                  Amount
-                </TableSortLabel>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sortedData.map((row, index) => {
-              // Check if this is the new transaction that just came in
-              const isNewTransaction = newTransaction && 
-                row.from === newTransaction.from && 
-                row.to === newTransaction.to && 
-                row.amount === newTransaction.amount && 
-                row.timestamp === newTransaction.timestamp;
-                
-              return (
-                <TableRow 
-                  key={index}
-                  className={isNewTransaction ? 'new-transaction-row' : ''}
-                >
-                  <TableCell>{formatTimestamp(row.timestamp)}</TableCell>
-                  <TableCell>{row.from}</TableCell>
-                  <TableCell>{row.to}</TableCell>
-                  <TableCell align="right">{formatAmount(row.amount)}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
     </div>
   );
 };

@@ -4,7 +4,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "3001:3000"
+      - '3001:3000'
     environment:
       - PORT=3000
       - NODE_ENV=development
@@ -13,20 +13,20 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - ./database:/data     
+      - ./database:/data
     command: npm run dev
     depends_on:
       - memgraph
     networks:
       - app-network
-  
+
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+      - '5173:5173'
     volumes:
       - ./frontend:/app
-      - /app/node_modules  
+      - /app/node_modules
     command: npm run dev
     depends_on:
       - memgraph
@@ -38,12 +38,12 @@ services:
 
   simulator:
     build:
-       context: ./transaction_simulator/
+      context: ./transaction_simulator/
     environment:
       - API_URL=http://backend:3000/api/transactions
       - DATABASE_PATH=/data/sayari.db
     volumes:
-      - ./database:/data                     
+      - ./database:/data
       - ./transaction_simulator:/simulator
       - /simulator/node_modules
     command: npm run dev
@@ -52,12 +52,12 @@ services:
       - memgraph
     networks:
       - app-network
-  
+
   memgraph:
     image: memgraph/memgraph
     ports:
-      - "7687:7687"
-      - "3002:3000"
+      - '7687:7687'
+      - '3002:3000'
     networks:
       - app-network
 
